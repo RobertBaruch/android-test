@@ -32,7 +32,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.example.android_test"
-    compileSdkVersion 34
+    compileSdk 34
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -49,8 +49,8 @@ android {
 
     defaultConfig {
         applicationId "com.example.android_test"
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdk 21
+        targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
