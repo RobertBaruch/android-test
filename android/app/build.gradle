@@ -1,23 +1,15 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
-        localProperties.load(reader)
-    }
+    localPropertiesFile.withReader('UTF-8') { reader -> localProperties.load(reader) }
 }
 
 def flutterRoot = localProperties.getProperty('flutter.sdk')
 if (flutterRoot == null) {
-    def flutterRootEnv = System.getenv('FLUTTER_ROOT')
-    if (flutterRootEnv != null) {
-        flutterRoot = flutterRootEnv
-    }
-}
-
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-if (flutterRoot != null) {
-    apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+    throw new GradleException("Flutter SDK not found. Run 'flutter pub get' to initialize.")
 }
 
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
@@ -30,9 +22,12 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+
 android {
     namespace "com.example.android_test"
-    compileSdk 34
+    compileSdk flutter.compileSdkVersion
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -49,8 +44,8 @@ android {
 
     defaultConfig {
         applicationId "com.example.android_test"
-        minSdk 21
-        targetSdk 34
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -60,6 +55,10 @@ android {
             signingConfig signingConfigs.debug
         }
     }
+}
+
+flutter {
+    source '../..'
 }
 
 dependencies {}
