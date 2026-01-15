@@ -8,12 +8,17 @@ if (localPropertiesFile.exists()) {
 
 def flutterRoot = localProperties.getProperty('flutter.sdk')
 if (flutterRoot == null) {
-    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+    def flutterRootEnv = System.getenv('FLUTTER_ROOT')
+    if (flutterRootEnv != null) {
+        flutterRoot = flutterRootEnv
+    }
 }
 
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+if (flutterRoot != null) {
+    apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+}
 
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
 if (flutterVersionCode == null) {
