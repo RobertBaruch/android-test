@@ -1,12 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class BleManager {
   static final BleManager _instance = BleManager._internal();
   factory BleManager() => _instance;
-  BleManager._internal();
+  BleManager._internal() {
+    _setupPlatformChannel();
+  }
+
+  static const platform = MethodChannel('com.example.android_test/ble_peripheral');
+  final StreamController<Map<String, dynamic>> _playerJoinedController = StreamController<Map<String, dynamic>>.broadcast();
 
   // UUIDs for our service and characteristics
   static final Guid serviceUuid = Guid("12345678-1234-5678-1234-56789abcdef0");
@@ -24,6 +30,40 @@ class BleManager {
   Stream<String> get playerActionStream => _playerActionController.stream;
   Stream<String> get gameStateStream => _gameStateController.stream;
   Stream<String> get connectionStatusStream => _connectionStatusController.stream;
+  Stream<Map<String, dynamic>> get playerJoinedStream => _playerJoinedController.stream;
+
+  void _setupPlatformChannel() {
+    platform.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'onAdvertisingStarted':
+          _connectionStatusController.add("Advertising started successfully");
+          break;
+        case 'onAdvertisingFailed':
+          final errorCode = call.arguments['errorCode'];
+          _connectionStatusController.add("Advertising failed: $errorCode");
+          break;
+        case 'onDeviceConnected':
+          final deviceId = call.arguments['deviceId'];
+          _connectionStatusController.add("Device connected: $deviceId");
+          break;
+        case 'onDeviceDisconnected':
+          final deviceId = call.arguments['deviceId'];
+          _connectionStatusController.add("Device disconnected: $deviceId");
+          break;
+        case 'onPlayerJoined':
+          final deviceId = call.arguments['deviceId'];
+          final playerName = call.arguments['playerName'];
+          _playerJoinedController.add({'deviceId': deviceId, 'playerName': playerName});
+          _connectionStatusController.add("Player joined: $playerName");
+          break;
+        case 'onPlayerAction':
+          final deviceId = call.arguments['deviceId'];
+          final action = call.arguments['action'];
+          _playerActionController.add(action);
+          break;
+      }
+    });
+  }
 
   // Request BLE permissions
   Future<bool> requestPermissions() async {
@@ -48,14 +88,27 @@ class BleManager {
     return adapterState == BluetoothAdapterState.on;
   }
 
-  // Host: Start advertising (Note: BLE peripheral mode is limited on Android)
-  Future<void> startHosting(String gameName, String gameCode) async {
-    // Note: flutter_blue_plus doesn't support peripheral mode (advertising)
-    // For a full implementation, you would need to use platform channels
-    // to access Android's BluetoothLeAdvertiser
-    //
-    // For now, this is a placeholder that would need native Android code
-    _connectionStatusController.add("Hosting started: $gameName ($gameCode)");
+  // Host: Start advertising using native Android BLE peripheral mode
+  Future<bool> startHosting(String gameName, String gameCode) async {
+    try {
+      final result = await platform.invokeMethod('startAdvertising', {
+        'gameName': gameName,
+        'gameCode': gameCode,
+      });
+      return result as bool;
+    } catch (e) {
+      _connectionStatusController.add("Failed to start hosting: $e");
+      return false;
+    }
+  }
+
+  // Host: Stop advertising
+  Future<void> stopHosting() async {
+    try {
+      await platform.invokeMethod('stopAdvertising');
+    } catch (e) {
+      _connectionStatusController.add("Failed to stop hosting: $e");
+    }
   }
 
   // Client: Scan for games
@@ -175,13 +228,21 @@ class BleManager {
 
   // Host: Send game state to all clients
   Future<void> sendGameState(String state) async {
-    // This would need to be implemented with platform channels
-    // to properly support BLE peripheral mode
-    _connectionStatusController.add("Sending state: $state");
+    try {
+      await platform.invokeMethod('sendGameState', {
+        'state': state,
+      });
+    } catch (e) {
+      _connectionStatusController.add("Failed to send game state: $e");
+    }
   }
 
   // Disconnect
   Future<void> disconnect() async {
+    // Stop hosting if we're a host
+    await stopHosting();
+
+    // Disconnect if we're a client
     if (connectedDevice != null) {
       await connectedDevice!.disconnect();
       connectedDevice = null;
@@ -197,5 +258,6 @@ class BleManager {
     _playerActionController.close();
     _gameStateController.close();
     _connectionStatusController.close();
+    _playerJoinedController.close();
   }
 }

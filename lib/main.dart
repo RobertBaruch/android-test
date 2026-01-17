@@ -143,6 +143,13 @@ class _HostGameScreenState extends State<HostGameScreen> {
         _statusMessage = status;
       });
     });
+
+    // Listen for players joining
+    _bleManager.playerJoinedStream.listen((playerData) {
+      setState(() {
+        _connectedPlayers.add(playerData['playerName'] as String);
+      });
+    });
   }
 
   void _generateGameCode() {
