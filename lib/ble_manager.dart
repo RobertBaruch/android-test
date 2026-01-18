@@ -62,6 +62,7 @@ class BleManager {
           _playerActionController.add(action);
           break;
       }
+      return null;
     });
   }
 

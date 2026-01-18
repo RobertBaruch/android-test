@@ -47,15 +47,15 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 
-  testWidgets('Host screen generates game code', (WidgetTester tester) async {
+  testWidgets('Host screen shows game name input', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
     // Tap the Host button
     await tester.tap(find.text('Host'));
     await tester.pumpAndSettle();
 
-    // Verify we're on the host screen
-    expect(find.text('Game Code:'), findsOneWidget);
-    expect(find.text('Waiting for players to join...'), findsOneWidget);
+    // Verify we're on the host screen with name input
+    expect(find.text('Enter Game Name:'), findsOneWidget);
+    expect(find.text('Start Hosting'), findsOneWidget);
   });
 }
