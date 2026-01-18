@@ -119,6 +119,13 @@ class BlePeripheralManager(private val context: Context, private val channel: Me
                                 "action" to action
                             ))
                         }
+
+                        else -> {
+                            // Unknown characteristic, just respond with success if needed
+                            if (responseNeeded) {
+                                gattServer?.sendResponse(dev, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+                            }
+                        }
                     }
                 }
             }
