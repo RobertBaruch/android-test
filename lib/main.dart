@@ -94,8 +94,9 @@ class HomeScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const GameScreen(gameMode: 'solo'),
+                            builder: (context) => const GameScreen(
+                              gameMode: 'solo',
+                            ),
                           ),
                         );
                       },
