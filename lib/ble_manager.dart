@@ -11,26 +11,35 @@ class BleManager {
     _setupPlatformChannel();
   }
 
-  static const platform = MethodChannel('com.example.android_test/ble_peripheral');
-  final StreamController<Map<String, dynamic>> _playerJoinedController = StreamController<Map<String, dynamic>>.broadcast();
+  static const platform =
+      MethodChannel('com.example.android_test/ble_peripheral');
+  final StreamController<Map<String, dynamic>> _playerJoinedController =
+      StreamController<Map<String, dynamic>>.broadcast();
 
   // UUIDs for our service and characteristics
   static final Guid serviceUuid = Guid("12345678-1234-5678-1234-56789abcdef0");
   static final Guid codeCharUuid = Guid("12345678-1234-5678-1234-56789abcdef1");
-  static final Guid playerActionCharUuid = Guid("12345678-1234-5678-1234-56789abcdef2");
-  static final Guid gameStateCharUuid = Guid("12345678-1234-5678-1234-56789abcdef3");
+  static final Guid playerActionCharUuid =
+      Guid("12345678-1234-5678-1234-56789abcdef2");
+  static final Guid gameStateCharUuid =
+      Guid("12345678-1234-5678-1234-56789abcdef3");
 
   BluetoothDevice? connectedDevice;
   List<BluetoothDevice> connectedClients = [];
 
-  final StreamController<String> _playerActionController = StreamController<String>.broadcast();
-  final StreamController<String> _gameStateController = StreamController<String>.broadcast();
-  final StreamController<String> _connectionStatusController = StreamController<String>.broadcast();
+  final StreamController<String> _playerActionController =
+      StreamController<String>.broadcast();
+  final StreamController<String> _gameStateController =
+      StreamController<String>.broadcast();
+  final StreamController<String> _connectionStatusController =
+      StreamController<String>.broadcast();
 
   Stream<String> get playerActionStream => _playerActionController.stream;
   Stream<String> get gameStateStream => _gameStateController.stream;
-  Stream<String> get connectionStatusStream => _connectionStatusController.stream;
-  Stream<Map<String, dynamic>> get playerJoinedStream => _playerJoinedController.stream;
+  Stream<String> get connectionStatusStream =>
+      _connectionStatusController.stream;
+  Stream<Map<String, dynamic>> get playerJoinedStream =>
+      _playerJoinedController.stream;
 
   void _setupPlatformChannel() {
     platform.setMethodCallHandler((call) {
@@ -214,7 +223,8 @@ class BleManager {
     if (connectedDevice == null) return;
 
     try {
-      List<BluetoothService> services = await connectedDevice!.discoverServices();
+      List<BluetoothService> services =
+          await connectedDevice!.discoverServices();
 
       for (var service in services) {
         if (service.uuid == serviceUuid) {
