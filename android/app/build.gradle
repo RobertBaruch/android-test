@@ -61,4 +61,6 @@ flutter {
     source '../..'
 }
 
-dependencies {}
+dependencies {
+    implementation 'no.nordicsemi.android:ble:2.7.3'
+}

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'ble_manager.dart';
 
 void main() {
@@ -342,8 +341,8 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
   final TextEditingController _codeController = TextEditingController();
   final BleManager _bleManager = BleManager();
   bool _searching = false;
-  List<ScanResult> _foundGames = [];
-  BluetoothDevice? _selectedDevice;
+  List<BleDevice> _foundGames = [];
+  BleDevice? _selectedDevice;
   String _statusMessage = '';
 
   @override
@@ -386,7 +385,7 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
       _statusMessage = 'Scanning for games...';
     });
 
-    List<ScanResult> results = await _bleManager.scanForGames();
+    List<BleDevice> results = await _bleManager.scanForGames();
 
     setState(() {
       _searching = false;
@@ -517,18 +516,17 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                             child: ListView.builder(
                               itemCount: _foundGames.length,
                               itemBuilder: (context, index) {
-                                final result = _foundGames[index];
-                                final deviceName =
-                                    result.device.platformName.isEmpty
-                                        ? 'Unknown Device'
-                                        : result.device.platformName;
+                                final device = _foundGames[index];
+                                final deviceName = device.deviceName.isEmpty
+                                    ? 'Unknown Device'
+                                    : device.deviceName;
                                 return ListTile(
                                   title: Text(deviceName),
-                                  subtitle: Text('RSSI: ${result.rssi}'),
-                                  selected: _selectedDevice == result.device,
+                                  subtitle: Text('RSSI: ${device.rssi}'),
+                                  selected: _selectedDevice == device,
                                   onTap: () {
                                     setState(() {
-                                      _selectedDevice = result.device;
+                                      _selectedDevice = device;
                                     });
                                   },
                                 );

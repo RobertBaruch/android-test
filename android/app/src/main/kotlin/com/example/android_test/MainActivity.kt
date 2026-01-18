@@ -6,16 +6,19 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.example.android_test/ble_peripheral"
+    private val PERIPHERAL_CHANNEL = "com.example.android_test/ble_peripheral"
+    private val CENTRAL_CHANNEL = "com.example.android_test/ble_central"
     private var blePeripheralManager: BlePeripheralManager? = null
+    private var bleCentralManager: BleCentralManager? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
-        blePeripheralManager = BlePeripheralManager(this, channel)
+        // Setup peripheral channel (for hosting/server mode)
+        val peripheralChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, PERIPHERAL_CHANNEL)
+        blePeripheralManager = BlePeripheralManager(this, peripheralChannel)
 
-        channel.setMethodCallHandler { call, result ->
+        peripheralChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "startAdvertising" -> {
                     val gameName = call.argument<String>("gameName") ?: ""
@@ -41,10 +44,62 @@ class MainActivity: FlutterActivity() {
                 }
             }
         }
+
+        // Setup central channel (for client/scanner mode)
+        val centralChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CENTRAL_CHANNEL)
+        bleCentralManager = BleCentralManager(this, centralChannel)
+
+        centralChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isBluetoothAvailable" -> {
+                    val available = bleCentralManager?.isBluetoothAvailable() ?: false
+                    result.success(available)
+                }
+
+                "startScan" -> {
+                    val timeoutSeconds = call.argument<Int>("timeoutSeconds") ?: 4
+                    val success = bleCentralManager?.startScan(timeoutSeconds) ?: false
+                    result.success(success)
+                }
+
+                "stopScan" -> {
+                    bleCentralManager?.stopScan()
+                    result.success(true)
+                }
+
+                "getScanResults" -> {
+                    val results = bleCentralManager?.getScanResults() ?: emptyList()
+                    result.success(results)
+                }
+
+                "connectToDevice" -> {
+                    val deviceAddress = call.argument<String>("deviceAddress") ?: ""
+                    val gameCode = call.argument<String>("gameCode") ?: ""
+                    val success = bleCentralManager?.connectToDevice(deviceAddress, gameCode) ?: false
+                    result.success(success)
+                }
+
+                "disconnect" -> {
+                    bleCentralManager?.disconnect()
+                    result.success(true)
+                }
+
+                "sendPlayerAction" -> {
+                    val action = call.argument<String>("action") ?: ""
+                    bleCentralManager?.sendPlayerAction(action)
+                    result.success(true)
+                }
+
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
     }
 
     override fun onDestroy() {
         blePeripheralManager?.stopAdvertising()
+        bleCentralManager?.disconnect()
         super.onDestroy()
     }
 }
