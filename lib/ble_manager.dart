@@ -33,7 +33,7 @@ class BleManager {
   Stream<Map<String, dynamic>> get playerJoinedStream => _playerJoinedController.stream;
 
   void _setupPlatformChannel() {
-    platform.setMethodCallHandler((call) async {
+    platform.setMethodCallHandler((call) {
       switch (call.method) {
         case 'onAdvertisingStarted':
           _connectionStatusController.add("Advertising started successfully");
@@ -62,7 +62,7 @@ class BleManager {
           _playerActionController.add(action);
           break;
       }
-      return null;
+      return Future.value(null);
     });
   }
 
