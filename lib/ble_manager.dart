@@ -34,31 +34,35 @@ class BleManager {
 
   void _setupPlatformChannel() {
     platform.setMethodCallHandler((call) {
+      final args = call.arguments as Map<dynamic, dynamic>?;
       switch (call.method) {
         case 'onAdvertisingStarted':
           _connectionStatusController.add("Advertising started successfully");
           break;
         case 'onAdvertisingFailed':
-          final errorCode = call.arguments['errorCode'];
+          final errorCode = args?['errorCode'];
           _connectionStatusController.add("Advertising failed: $errorCode");
           break;
         case 'onDeviceConnected':
-          final deviceId = call.arguments['deviceId'];
+          final deviceId = args?['deviceId'];
           _connectionStatusController.add("Device connected: $deviceId");
           break;
         case 'onDeviceDisconnected':
-          final deviceId = call.arguments['deviceId'];
+          final deviceId = args?['deviceId'];
           _connectionStatusController.add("Device disconnected: $deviceId");
           break;
         case 'onPlayerJoined':
-          final deviceId = call.arguments['deviceId'];
-          final playerName = call.arguments['playerName'];
-          _playerJoinedController.add({'deviceId': deviceId, 'playerName': playerName});
+          final deviceId = args?['deviceId'];
+          final playerName = args?['playerName'];
+          _playerJoinedController.add({
+            'deviceId': deviceId,
+            'playerName': playerName,
+          });
           _connectionStatusController.add("Player joined: $playerName");
           break;
         case 'onPlayerAction':
-          final deviceId = call.arguments['deviceId'];
-          final action = call.arguments['action'];
+          final deviceId = args?['deviceId'];
+          final action = args?['action'];
           _playerActionController.add(action);
           break;
       }
