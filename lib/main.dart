@@ -126,7 +126,7 @@ class HostGameScreen extends StatefulWidget {
 class _HostGameScreenState extends State<HostGameScreen> {
   String? _gameCode;
   String _gameName = '';
-  List<String> _connectedPlayers = [];
+  final List<String> _connectedPlayers = [];
   final TextEditingController _nameController = TextEditingController();
   final BleManager _bleManager = BleManager();
   bool _isHosting = false;
@@ -179,6 +179,7 @@ class _HostGameScreenState extends State<HostGameScreen> {
 
     bool bleAvailable = await _bleManager.isBluetoothAvailable();
     if (!bleAvailable) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Bluetooth is not available or turned off'),
@@ -369,6 +370,7 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
   Future<void> _searchForGames() async {
     bool bleAvailable = await _bleManager.isBluetoothAvailable();
     if (!bleAvailable) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Bluetooth is not available or turned off'),

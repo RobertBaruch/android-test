@@ -70,7 +70,6 @@ class BleManager {
           _connectionStatusController.add("Player joined: $playerName");
           break;
         case 'onPlayerAction':
-          final deviceId = args?['deviceId'];
           final action = args?['action'];
           _playerActionController.add(action);
           break;
