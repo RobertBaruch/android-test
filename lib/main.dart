@@ -94,7 +94,8 @@ class HomeScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const GameScreen(gameMode: 'solo'),
+                            builder: (context) =>
+                                const GameScreen(gameMode: 'solo'),
                           ),
                         );
                       },
@@ -179,7 +180,9 @@ class _HostGameScreenState extends State<HostGameScreen> {
     bool bleAvailable = await _bleManager.isBluetoothAvailable();
     if (!bleAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bluetooth is not available or turned off')),
+        const SnackBar(
+          content: Text('Bluetooth is not available or turned off'),
+        ),
       );
       return;
     }
@@ -258,7 +261,10 @@ class _HostGameScreenState extends State<HostGameScreen> {
                   ] else ...[
                     Text(
                       'Game: $_gameName',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     const Text(
@@ -276,7 +282,9 @@ class _HostGameScreenState extends State<HostGameScreen> {
                     ),
                     const SizedBox(height: 30),
                     Text(
-                      _statusMessage.isEmpty ? 'Waiting for players to join...' : _statusMessage,
+                      _statusMessage.isEmpty
+                          ? 'Waiting for players to join...'
+                          : _statusMessage,
                       style: const TextStyle(fontSize: 16),
                       textAlign: TextAlign.center,
                     ),
@@ -284,7 +292,10 @@ class _HostGameScreenState extends State<HostGameScreen> {
                     if (_connectedPlayers.isNotEmpty) ...[
                       const Text(
                         'Connected Players:',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       ...(_connectedPlayers.map((player) => Text(player))),
                     ],
@@ -359,7 +370,9 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     bool bleAvailable = await _bleManager.isBluetoothAvailable();
     if (!bleAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bluetooth is not available or turned off')),
+        const SnackBar(
+          content: Text('Bluetooth is not available or turned off'),
+        ),
       );
       return;
     }
@@ -375,7 +388,9 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     setState(() {
       _searching = false;
       _foundGames = results;
-      _statusMessage = results.isEmpty ? 'No games found' : 'Found ${results.length} game(s)';
+      _statusMessage = results.isEmpty
+          ? 'No games found'
+          : 'Found ${results.length} game(s)';
     });
   }
 
@@ -398,7 +413,10 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
       _statusMessage = 'Connecting...';
     });
 
-    bool connected = await _bleManager.connectToHost(_selectedDevice!, _codeController.text);
+    bool connected = await _bleManager.connectToHost(
+      _selectedDevice!,
+      _codeController.text,
+    );
 
     if (connected) {
       if (mounted) {
@@ -415,7 +433,11 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_statusMessage.isEmpty ? 'Connection failed' : _statusMessage)),
+          SnackBar(
+            content: Text(
+              _statusMessage.isEmpty ? 'Connection failed' : _statusMessage,
+            ),
+          ),
         );
       }
     }
@@ -481,7 +503,10 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                         if (_foundGames.isNotEmpty) ...[
                           const Text(
                             'Available Games:',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                           ),
                           const SizedBox(height: 10),
                           SizedBox(
@@ -490,9 +515,10 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                               itemCount: _foundGames.length,
                               itemBuilder: (context, index) {
                                 final result = _foundGames[index];
-                                final deviceName = result.device.platformName.isEmpty
-                                    ? 'Unknown Device'
-                                    : result.device.platformName;
+                                final deviceName =
+                                    result.device.platformName.isEmpty
+                                        ? 'Unknown Device'
+                                        : result.device.platformName;
                                 return ListTile(
                                   title: Text(deviceName),
                                   subtitle: Text('RSSI: ${result.rssi}'),
