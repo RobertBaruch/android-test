@@ -125,6 +125,7 @@ class BlePeripheralManager(private val context: Context, private val channel: Me
                             if (responseNeeded) {
                                 gattServer?.sendResponse(dev, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
                             }
+                            Unit
                         }
                     }
                 }
