@@ -1,31 +1,43 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+class BleDevice {
+  final String deviceId;
+  final String deviceName;
+  final int rssi;
+
+  BleDevice({
+    required this.deviceId,
+    required this.deviceName,
+    required this.rssi,
+  });
+
+  factory BleDevice.fromMap(Map<dynamic, dynamic> map) {
+    return BleDevice(
+      deviceId: map['deviceId'] as String,
+      deviceName: map['deviceName'] as String,
+      rssi: map['rssi'] as int,
+    );
+  }
+}
 
 class BleManager {
   static final BleManager _instance = BleManager._internal();
   factory BleManager() => _instance;
   BleManager._internal() {
-    _setupPlatformChannel();
+    _setupPlatformChannels();
   }
 
-  static const platform =
+  static const peripheralChannel =
       MethodChannel('com.example.android_test/ble_peripheral');
+  static const centralChannel =
+      MethodChannel('com.example.android_test/ble_central');
   final StreamController<Map<String, dynamic>> _playerJoinedController =
       StreamController<Map<String, dynamic>>.broadcast();
 
-  // UUIDs for our service and characteristics
-  static final Guid serviceUuid = Guid("12345678-1234-5678-1234-56789abcdef0");
-  static final Guid codeCharUuid = Guid("12345678-1234-5678-1234-56789abcdef1");
-  static final Guid playerActionCharUuid =
-      Guid("12345678-1234-5678-1234-56789abcdef2");
-  static final Guid gameStateCharUuid =
-      Guid("12345678-1234-5678-1234-56789abcdef3");
-
-  BluetoothDevice? connectedDevice;
-  List<BluetoothDevice> connectedClients = [];
+  String? connectedDeviceId;
+  List<String> connectedClientIds = [];
 
   final StreamController<String> _playerActionController =
       StreamController<String>.broadcast();
@@ -41,8 +53,9 @@ class BleManager {
   Stream<Map<String, dynamic>> get playerJoinedStream =>
       _playerJoinedController.stream;
 
-  void _setupPlatformChannel() {
-    platform.setMethodCallHandler((call) {
+  void _setupPlatformChannels() {
+    // Setup peripheral channel callbacks (for hosting/server mode)
+    peripheralChannel.setMethodCallHandler((call) {
       final args = call.arguments as Map<dynamic, dynamic>?;
       switch (call.method) {
         case 'onAdvertisingStarted':
@@ -76,6 +89,35 @@ class BleManager {
       }
       return Future.value(null);
     });
+
+    // Setup central channel callbacks (for client/scanner mode)
+    centralChannel.setMethodCallHandler((call) {
+      final args = call.arguments as Map<dynamic, dynamic>?;
+      switch (call.method) {
+        case 'onScanFailed':
+          final errorCode = args?['errorCode'];
+          _connectionStatusController.add("Scan failed: $errorCode");
+          break;
+        case 'onConnectionAccepted':
+          _connectionStatusController.add("Connected successfully");
+          break;
+        case 'onConnectionRejected':
+          final reason = args?['reason'] ?? 'Unknown reason';
+          _connectionStatusController.add("Connection rejected: $reason");
+          break;
+        case 'onConnectionFailed':
+          final error = args?['error'] ?? 'Unknown error';
+          _connectionStatusController.add("Connection failed: $error");
+          break;
+        case 'onGameStateReceived':
+          final state = args?['state'];
+          if (state != null) {
+            _gameStateController.add(state);
+          }
+          break;
+      }
+      return Future.value(null);
+    });
   }
 
   // Request BLE permissions
@@ -92,19 +134,18 @@ class BleManager {
 
   // Check if Bluetooth is available and on
   Future<bool> isBluetoothAvailable() async {
-    if (await FlutterBluePlus.isSupported == false) {
+    try {
+      final result = await centralChannel.invokeMethod('isBluetoothAvailable');
+      return result as bool;
+    } catch (e) {
       return false;
     }
-
-    // Check if Bluetooth is on
-    var adapterState = await FlutterBluePlus.adapterState.first;
-    return adapterState == BluetoothAdapterState.on;
   }
 
   // Host: Start advertising using native Android BLE peripheral mode
   Future<bool> startHosting(String gameName, String gameCode) async {
     try {
-      final result = await platform.invokeMethod('startAdvertising', {
+      final result = await peripheralChannel.invokeMethod('startAdvertising', {
         'gameName': gameName,
         'gameCode': gameCode,
       });
@@ -118,83 +159,54 @@ class BleManager {
   // Host: Stop advertising
   Future<void> stopHosting() async {
     try {
-      await platform.invokeMethod('stopAdvertising');
+      await peripheralChannel.invokeMethod('stopAdvertising');
     } catch (e) {
       _connectionStatusController.add("Failed to stop hosting: $e");
     }
   }
 
   // Client: Scan for games
-  Future<List<ScanResult>> scanForGames() async {
-    List<ScanResult> results = [];
-
-    // Start scanning
-    await FlutterBluePlus.startScan(
-      timeout: const Duration(seconds: 4),
-      withServices: [serviceUuid],
-    );
-
-    // Listen to scan results
-    var subscription = FlutterBluePlus.scanResults.listen((scanResults) {
-      results = scanResults;
-    });
-
-    // Wait for scan to complete
-    await Future.delayed(const Duration(seconds: 4));
-
-    // Stop scanning
-    await FlutterBluePlus.stopScan();
-    await subscription.cancel();
-
-    return results;
-  }
-
-  // Client: Connect to host and send game code
-  Future<bool> connectToHost(BluetoothDevice device, String gameCode) async {
+  Future<List<BleDevice>> scanForGames() async {
     try {
-      await device.connect();
-      connectedDevice = device;
+      // Start scanning
+      await centralChannel.invokeMethod('startScan', {
+        'timeoutSeconds': 4,
+      });
 
-      // Discover services
-      List<BluetoothService> services = await device.discoverServices();
+      // Wait for scan to complete
+      await Future.delayed(const Duration(seconds: 4, milliseconds: 100));
 
-      // Find our service
-      BluetoothService? ourService;
-      for (var service in services) {
-        if (service.uuid == serviceUuid) {
-          ourService = service;
-          break;
-        }
-      }
+      // Get scan results
+      final results = await centralChannel.invokeMethod('getScanResults');
+      final List<BleDevice> devices = [];
 
-      if (ourService == null) {
-        await device.disconnect();
-        return false;
-      }
-
-      // Find code characteristic and send code
-      for (var characteristic in ourService.characteristics) {
-        if (characteristic.uuid == codeCharUuid) {
-          await characteristic.write(utf8.encode(gameCode));
-
-          // Read response to see if code was accepted
-          var response = await characteristic.read();
-          String responseStr = utf8.decode(response);
-
-          if (responseStr == "ACCEPTED") {
-            // Subscribe to game state updates
-            await _subscribeToGameState(ourService);
-            _connectionStatusController.add("Connected successfully");
-            return true;
-          } else {
-            await device.disconnect();
-            _connectionStatusController.add("Invalid game code");
-            return false;
+      if (results is List) {
+        for (var result in results) {
+          if (result is Map) {
+            devices.add(BleDevice.fromMap(result));
           }
         }
       }
 
-      await device.disconnect();
+      return devices;
+    } catch (e) {
+      _connectionStatusController.add("Scan failed: $e");
+      return [];
+    }
+  }
+
+  // Client: Connect to host and send game code
+  Future<bool> connectToHost(BleDevice device, String gameCode) async {
+    try {
+      final result = await centralChannel.invokeMethod('connectToDevice', {
+        'deviceAddress': device.deviceId,
+        'gameCode': gameCode,
+      });
+
+      if (result as bool) {
+        connectedDeviceId = device.deviceId;
+        return true;
+      }
       return false;
     } catch (e) {
       _connectionStatusController.add("Connection failed: $e");
@@ -202,39 +214,14 @@ class BleManager {
     }
   }
 
-  // Subscribe to game state updates from host
-  Future<void> _subscribeToGameState(BluetoothService service) async {
-    for (var characteristic in service.characteristics) {
-      if (characteristic.uuid == gameStateCharUuid) {
-        await characteristic.setNotifyValue(true);
-        characteristic.lastValueStream.listen((value) {
-          if (value.isNotEmpty) {
-            String message = utf8.decode(value);
-            _gameStateController.add(message);
-          }
-        });
-      }
-    }
-  }
-
   // Client: Send player action to host
   Future<void> sendPlayerAction(String action) async {
-    if (connectedDevice == null) return;
+    if (connectedDeviceId == null) return;
 
     try {
-      List<BluetoothService> services =
-          await connectedDevice!.discoverServices();
-
-      for (var service in services) {
-        if (service.uuid == serviceUuid) {
-          for (var characteristic in service.characteristics) {
-            if (characteristic.uuid == playerActionCharUuid) {
-              await characteristic.write(utf8.encode(action));
-              return;
-            }
-          }
-        }
-      }
+      await centralChannel.invokeMethod('sendPlayerAction', {
+        'action': action,
+      });
     } catch (e) {
       _connectionStatusController.add("Failed to send action: $e");
     }
@@ -243,7 +230,7 @@ class BleManager {
   // Host: Send game state to all clients
   Future<void> sendGameState(String state) async {
     try {
-      await platform.invokeMethod('sendGameState', {
+      await peripheralChannel.invokeMethod('sendGameState', {
         'state': state,
       });
     } catch (e) {
@@ -257,15 +244,16 @@ class BleManager {
     await stopHosting();
 
     // Disconnect if we're a client
-    if (connectedDevice != null) {
-      await connectedDevice!.disconnect();
-      connectedDevice = null;
+    if (connectedDeviceId != null) {
+      try {
+        await centralChannel.invokeMethod('disconnect');
+        connectedDeviceId = null;
+      } catch (e) {
+        _connectionStatusController.add("Failed to disconnect: $e");
+      }
     }
 
-    for (var client in connectedClients) {
-      await client.disconnect();
-    }
-    connectedClients.clear();
+    connectedClientIds.clear();
   }
 
   void dispose() {
