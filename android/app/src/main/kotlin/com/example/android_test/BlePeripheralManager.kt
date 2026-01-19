@@ -29,6 +29,7 @@ class BlePeripheralManager(private val context: Context, private val channel: Me
     private var gattServer: BluetoothGattServer? = null
 
     private var gameCode: String = ""
+    private var originalDeviceName: String? = null
     private val connectedDevices = mutableListOf<BluetoothDevice>()
     private val deviceCodes = mutableMapOf<BluetoothDevice, String>()
 
@@ -200,6 +201,15 @@ class BlePeripheralManager(private val context: Context, private val channel: Me
 
         gattServer?.addService(service)
 
+        // Save original device name and set it to the game name for advertising
+        try {
+            originalDeviceName = bluetoothAdapter?.name
+            bluetoothAdapter?.setName(gameName)
+            Log.d(TAG, "Changed device name from '$originalDeviceName' to '$gameName'")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Failed to set device name: ${e.message}")
+        }
+
         // Start advertising
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
@@ -209,7 +219,7 @@ class BlePeripheralManager(private val context: Context, private val channel: Me
             .build()
 
         val data = AdvertiseData.Builder()
-            .setIncludeDeviceName(false)
+            .setIncludeDeviceName(true)
             .addServiceUuid(ParcelUuid(SERVICE_UUID))
             .build()
 
@@ -224,6 +234,17 @@ class BlePeripheralManager(private val context: Context, private val channel: Me
         gattServer = null
         connectedDevices.clear()
         deviceCodes.clear()
+
+        // Restore original device name
+        originalDeviceName?.let { name ->
+            try {
+                bluetoothAdapter?.setName(name)
+                Log.d(TAG, "Restored device name to '$name'")
+            } catch (e: SecurityException) {
+                Log.e(TAG, "Failed to restore device name: ${e.message}")
+            }
+            originalDeviceName = null
+        }
     }
 
     fun sendGameState(state: String) {
